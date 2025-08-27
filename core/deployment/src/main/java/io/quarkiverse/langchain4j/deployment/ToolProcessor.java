@@ -1,11 +1,6 @@
 package io.quarkiverse.langchain4j.deployment;
 
-import static io.quarkiverse.langchain4j.deployment.DotNames.BLOCKING;
-import static io.quarkiverse.langchain4j.deployment.DotNames.COMPLETION_STAGE;
-import static io.quarkiverse.langchain4j.deployment.DotNames.MULTI;
-import static io.quarkiverse.langchain4j.deployment.DotNames.NON_BLOCKING;
-import static io.quarkiverse.langchain4j.deployment.DotNames.RUN_ON_VIRTUAL_THREAD;
-import static io.quarkiverse.langchain4j.deployment.DotNames.UNI;
+import static io.quarkiverse.langchain4j.deployment.DotNames.*;
 import static io.quarkiverse.langchain4j.deployment.ObjectSubstitutionUtil.registerJsonSchema;
 
 import java.lang.reflect.Modifier;
@@ -22,6 +17,8 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import jakarta.validation.constraints.NotNull;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationTarget;
@@ -100,6 +97,10 @@ public class ToolProcessor {
     private static final ResultHandle[] EMPTY_RESULT_HANDLE_ARRAY = new ResultHandle[0];
 
     private static final Logger log = Logger.getLogger(ToolProcessor.class);
+
+    private static final List<DotName> JAVA_TIME_NAMES = List.of(
+            INSTANT, LOCAL_DATE, LOCAL_DATE_TIME, LOCAL_TIME,
+            OFFSET_DATE_TIME, OFFSET_TIME, YEAR, YEAR_MONTH);
 
     @BuildStep
     public void telemetry(Capabilities capabilities, BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer) {
@@ -557,6 +558,11 @@ public class ToolProcessor {
             return JsonNumberSchema.builder().description(description).build();
         }
 
+        if (JAVA_TIME_NAMES.stream().anyMatch(typeName::equals)) {
+            // TODO In the future we can implement parsing validation with patterns
+            return JsonStringSchema.builder().description(description).build();
+        }
+
         // TODO something else?
         if (type.kind() == Type.Kind.ARRAY || DotNames.LIST.equals(typeName) || DotNames.SET.equals(typeName)) {
             ParameterizedType parameterizedType = type.kind() == Type.Kind.PARAMETERIZED_TYPE ? type.asParameterizedType()
@@ -587,7 +593,12 @@ public class ToolProcessor {
                     .description(Optional.ofNullable(description).orElseGet(() -> descriptionFrom(type)));
 
             ClassInfo targetClass = index.getClassByName(type.name());
-            buildSchema(index, builder, targetClass);
+
+            if (targetClass != null) {
+                buildSchema(index, builder, targetClass);
+            } else {
+                log.warnf("The type '%s' could not be accessed from the index", type.name());
+            }
 
             return builder.build();
         }
@@ -595,14 +606,14 @@ public class ToolProcessor {
         throw new IllegalArgumentException("Unsupported type: " + type);
     }
 
-    private void buildSchema(IndexView index, Builder builder, ClassInfo targetClass) {
+    private void buildSchema(IndexView index, Builder builder, @NotNull ClassInfo targetClass) {
         if (targetClass.superName() != null) {
             ClassInfo superClass = index.getClassByName(targetClass.superName());
             if (superClass != null) {
                 buildSchema(index, builder, superClass);
             }
         }
-        Optional.ofNullable(targetClass)
+        Optional.of(targetClass)
                 .map(ClassInfo::fields)
                 .orElseGet(List::of)
                 .forEach(field -> {

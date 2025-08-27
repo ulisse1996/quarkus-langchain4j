@@ -2,6 +2,7 @@ package io.quarkiverse.langchain4j.deployment;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.*;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
@@ -55,6 +56,15 @@ public class DotNames {
     public static final DotName NON_BLOCKING = DotName.createSimple(NonBlocking.class);
     public static final DotName COMPLETION_STAGE = DotName.createSimple(CompletionStage.class);
     public static final DotName RUN_ON_VIRTUAL_THREAD = DotName.createSimple(RunOnVirtualThread.class);
+
+    public static final DotName INSTANT = DotName.createSimple(Instant.class);
+    public static final DotName LOCAL_DATE = DotName.createSimple(LocalDate.class);
+    public static final DotName LOCAL_DATE_TIME = DotName.createSimple(LocalDateTime.class);
+    public static final DotName LOCAL_TIME = DotName.createSimple(LocalTime.class);
+    public static final DotName OFFSET_DATE_TIME = DotName.createSimple(OffsetDateTime.class);
+    public static final DotName OFFSET_TIME = DotName.createSimple(OffsetTime.class);
+    public static final DotName YEAR = DotName.createSimple(Year.class);
+    public static final DotName YEAR_MONTH = DotName.createSimple(YearMonth.class);
 
     public static final DotName OBJECT = DotName.createSimple(Object.class.getName());
     public static final DotName RECORD = DotName.createSimple(Record.class);
